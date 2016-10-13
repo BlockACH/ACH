@@ -1,0 +1,29 @@
+{
+  "name": "ach",
+  "version": "1.0.0",
+  "description": "a blockchain solution for central bank ACH",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlockACH/ACH.git"
+  },
+  "keywords": [
+    "Gcoin",
+    "blockchain",
+    "ACH",
+    "central",
+    "bank"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/BlockACH/ACH/issues"
+  },
+  "homepage": "https://github.com/BlockACH/ACH#readme",
+  "dependencies": {
+    "gcoind-rpc": "git+https://github.com/BlockACH/Gcoind-rpc.git"
+  }
+}
