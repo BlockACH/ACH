@@ -1,51 +1,108 @@
-'use strict'
+'use strict';
 
-const gcoinrpc = require('gcoind-rpc')
-const MongoClient = require('mongodb').MongoClient
-const S = require('string')
+// const gcoinrpc = require('gcoind-rpc');
+// console.log('hi');
+// const S = require('string');
+const MongoClient = require('mongodb').MongoClient;
+// const moment = require('moment');
 
-const mongodbUrl = 'mongodb://localhost:27017/ach'
-const collectionName = 'tx'
+const mongodbUrl = 'mongodb://localhost:27017/ach';
+const collectionName = 'tx';
+const todayString = '2016-06-02T00:00:00+08:00';
+const yesterdayString = '2016-06-01T00:00:00+08:00';
 
-function arrayUnique(array) {
-  let a = array.concat()
-  for(let i = 0; i < a.length; ++i) {
-    for(let j = i + 1; j < a.length; ++j) {
-      if(a[i] === a[j])
-        a.splice(j--, 1)
-    }
-  }
-  return a;
+let pbankSet;
+let rbankSet;
+
+function findUniqueBankList() {
+  MongoClient.connect(mongodbUrl, (error, db) => {
+    const collection = db.collection(collectionName);
+
+    collection.distinct('P_PBANK', (err, docs) => {
+      if (!err) {
+        pbankSet = new Set(docs);
+        collection.distinct('P_RBANK', (e, r) => {
+          if (!e) {
+            rbankSet = new Set(r);
+            const uniqueBankList = Array.from(new Set([...rbankSet, ...pbankSet]));
+            console.log(uniqueBankList);
+            console.log(uniqueBankList.length);
+          } else {
+            console.log(e);
+          }
+          db.close();
+        });
+      } else {
+        console.log(err);
+        db.close();
+      }
+    });
+  });
 }
 
-let pbankList
-let rbankList
-
-MongoClient.connect(mongodbUrl, (err, db) => {
-  const collection = db.collection(collectionName)
-
-  collection.distinct('P_PBANK', (error, docs) => {
-    if (!error) {
-      // console.log(docs)
-      console.log(docs.length)
-      pbankList = docs
-      collection.distinct('P_RBANK', (error, docs) => {
-        if (!error) {
-          // console.log(docs)
-          console.log(docs.length)
-          rbankList = docs
-          let uniqueBankList = arrayUnique(pbankList.concat(rbankList))
-          console.log(uniqueBankList.length)
+function getOriginalTxByRTxs(rTxs) {
+  MongoClient.connect(mongodbUrl, (error, db) => {
+    const collection = db.collection(collectionName);
+    const oTxSet = new Set();
+    for (let i = 0; i < rTxs.length; i += 1) {
+      const filter = {
+        P_TDATE: rTxs[i].P_PDATE,
+        P_SEQ: rTxs[i].P_PSEQ,
+        P_SCHD: rTxs[i].P_PSCHD,
+        P_PBANK: rTxs[i].P_RBANK,
+      };
+      collection.find(filter).toArray((err, docs) => {
+        let tx;
+        for (tx of docs) {
+          oTxSet.add(tx);
         }
-        else {
-          console.log(error)
+        console.log(`oTxSet size is: ${oTxSet.size}`);
+        console.log(docs.length);
+        if (docs.length > 1) {
+          console.log(docs);
         }
-        db.close()
-      })
+        // if (i === rTxs.length - 1) {
+        //   console.log(`Original Tx amount is: ${oTxSet.size}`);
+        // }
+      });
     }
-    else {
-      console.log(error)
-    }
-    db.close()
-  })
-})
+  });
+}
+
+function getTxsByStartDate(dateString) {
+  MongoClient.connect(mongodbUrl, (error, db) => {
+    const collection = db.collection(collectionName);
+    const filter = { P_TDATE: dateString };
+    collection.find(filter).toArray((err, docs) => {
+      if (err) {
+        console.error(err);
+      } else {
+        console.log(docs);
+        console.log(docs.length);
+      }
+      db.close();
+    });
+  });
+}
+
+function getRTxsByStartDate(dateString) {
+  MongoClient.connect(mongodbUrl, (error, db) => {
+    const collection = db.collection(collectionName);
+    const filter = { P_TDATE: dateString, P_TYPE: 'R' };
+    collection.find(filter).toArray((err, docs) => {
+      if (err) {
+        console.error(err);
+      } else {
+        console.log(docs);
+        getOriginalTxByRTxs(docs);
+        console.log(`R Tx amount is: ${docs.length}`);
+      }
+      db.close();
+    });
+  });
+}
+
+
+// findUniqueBankList();
+getRTxsByStartDate(todayString);
+// getTxsByStartDate('2016-06-02T00:00:00+08:00');
