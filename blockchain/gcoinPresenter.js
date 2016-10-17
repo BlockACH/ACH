@@ -8,10 +8,30 @@ const slice = function slice(arr, start, end) {
 class GcoinPresenter {
   constructor(config) {
     this.rpc = new GcoinRpc(config);
-    for (const method of Object.keys(GcoinRpc.callspec)) {
-      this[method] = GcoinPresenter.createGeneralRpcFunction(method);
-      this[method.toLowerCase()] = GcoinPresenter.createGeneralRpcFunction(method);
+    this.extendsRpcToGcoinPresenter();
+  }
+
+  extendsRpcToGcoinPresenter() {
+    const rpcSpec = [
+      'decodeLicenseInfo',
+      'encodeLicenseInfo',
+      'mint',
+    ];
+
+    for (const method of rpcSpec) {
+      this[method] = this.createGeneralRpcFunction(method);
+      this[method.toLowerCase()] = this[method];
     }
+  }
+
+  createGeneralRpcFunction(methodName) {
+    const self = this;
+    return co.wrap(function* _(...args) {
+      const rpcArgs = args;
+      rpcArgs.unshift(methodName);
+      const result = yield self.callRpc(...rpcArgs);
+      return result;
+    });
   }
 
   callRpc(methodName, ...args) {
@@ -28,43 +48,17 @@ class GcoinPresenter {
     });
   }
 
-  getAddressBalance(address, callback) {
+  getAddressBalance(address) {
     const self = this;
-    co(function* _() {
+    return co(function* _() {
       const utxos = yield self.callRpc('gettxoutaddress', address);
       const balance = {};
       utxos.forEach((utxo) => {
         const currentBalance = balance[utxo.color] || 0;
         balance[utxo.color] = currentBalance + utxo.value;
       });
-
-      if (typeof callback === 'function') {
-        callback(null, balance);
-      }
-    }).catch((err) => {
-      if (typeof callback === 'function') {
-        callback(err);
-      }
+      return balance;
     });
-  }
-
-  static createGeneralRpcFunction(methodName) {
-    return function rpc(...args) {
-      const self = this;
-      const callback = slice(args, args.length - 1)[0];
-      const rpcArgs = slice(args, 0, args.length - 1);
-      rpcArgs.unshift(methodName);
-      co(function* _() {
-        const result = yield self.callRpc(...rpcArgs);
-        if (typeof callback === 'function') {
-          callback(null, result);
-        }
-      }).catch((err) => {
-        if (typeof callback === 'function') {
-          callback(err);
-        }
-      });
-    };
   }
 }
 
