@@ -26,6 +26,7 @@
   "dependencies": {
     "gcoind-rpc": "git+https://github.com/BlockACH/Gcoind-rpc.git",
     "mongodb": "^2.2.10",
-    "string": "^3.3.3"
+    "string": "^3.3.3",
+    "co": "^4.6.0"
   }
 }
