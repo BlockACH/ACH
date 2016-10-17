@@ -1,10 +1,6 @@
 const GcoinRpc = require('gcoind-rpc');
 const co = require('co');
 
-const slice = function slice(arr, start, end) {
-  return Array.prototype.slice.call(arr, start, end);
-};
-
 class GcoinPresenter {
   constructor(config) {
     this.rpc = new GcoinRpc(config);
@@ -13,8 +9,7 @@ class GcoinPresenter {
 
   extendsRpcToGcoinPresenter() {
     const rpcSpec = [
-      'decodeLicenseInfo',
-      'encodeLicenseInfo',
+      'getInfo',
       'mint',
     ];
 
@@ -58,6 +53,33 @@ class GcoinPresenter {
         balance[utxo.color] = currentBalance + utxo.value;
       });
       return balance;
+    });
+  }
+
+  createLicense(address, color, name) {
+    const self = this;
+    const license = {
+      name,
+      version: 1,
+      description: 'testing',
+      issuer: 'Gcoin',
+      divisibility: true,
+      fee_type: 'fixed',
+      fee_rate: 0.0,
+      upper_limit: 0,
+      fee_collector: 'none',
+      mint_schedule: 'free',
+      member_control: false,
+      metadata_link: 'http://g-coin.org',
+      metadata_hash: '0000000000000000000000000000000000000000000000000000000000000000',
+    };
+
+    return co(function* _() {
+      const licenseHex = yield self.callRpc('encodeLicenseInfo', license);
+      return yield self.callRpc('sendLicenseToAddress', address, color, licenseHex);
+    }).then((txId) => {
+      self.mint(1, 0);
+      return txId;
     });
   }
 }
