@@ -7,5 +7,6 @@
     ],
     "rules": {
         "strict": 0,
+        "no-console": 0,
     }
 }
