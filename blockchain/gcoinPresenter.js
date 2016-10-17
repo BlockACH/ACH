@@ -56,6 +56,14 @@ class GcoinPresenter {
     });
   }
 
+  getNewAddress() {
+    const self = this;
+    return co(function* _() {
+      yield self.callRpc('keypoolrefill');
+      return yield self.callRpc('getnewaddress');
+    });
+  }
+
   createLicense(address, color, name) {
     const self = this;
     const license = {
