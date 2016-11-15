@@ -28,6 +28,7 @@
     "csv-parser": "^1.11.0",
     "eslint-plugin-react": "^6.4.1",
     "gcoind-rpc": "git+https://github.com/BlockACH/Gcoind-rpc.git",
+    "lodash": "^4.16.6",
     "moment": "^2.15.1",
     "mongodb": "^2.2.10",
     "string": "^3.3.3"
