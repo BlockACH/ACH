@@ -1,0 +1,10 @@
+{
+  "gcoin": {
+    "protocol": "http",
+    "user": "gcoin",
+    "pass": "abc123",
+    "host": "oss1.diqi.us",
+    "port": "1126"
+  },
+  "mongodbUrl": "mongodb://ach.csie.org:27017/ach"
+}
