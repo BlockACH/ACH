@@ -24,10 +24,13 @@
   },
   "homepage": "https://github.com/BlockACH/ACH#readme",
   "dependencies": {
+    "bigi": "^1.4.2",
     "co": "^4.6.0",
     "csv-parser": "^1.11.0",
+    "decimal": "0.0.2",
     "eslint-plugin-react": "^6.4.1",
     "gcoind-rpc": "git+https://github.com/BlockACH/Gcoind-rpc.git",
+    "gcoinjs-lib": "0.0.3",
     "lodash": "^4.16.6",
     "moment": "^2.15.1",
     "mongodb": "^2.2.10",

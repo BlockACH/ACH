@@ -1,5 +1,14 @@
 const GcoinRpc = require('gcoind-rpc');
+const gcoinLib = require('gcoinjs-lib');
+const decimal = require('decimal');
 const co = require('co');
+
+class GcoinException {
+  constructor(message) {
+    this.message = message;
+    this.name = 'GcoinException';
+  }
+}
 
 class GcoinPresenter {
   constructor(config) {
@@ -7,10 +16,42 @@ class GcoinPresenter {
     this.extendsRpcToGcoinPresenter();
   }
 
+  static countBalance(utxos) {
+    const balance = {};
+    utxos.forEach((utxo) => {
+      const currentBalance = balance[utxo.color] || 0;
+      balance[utxo.color] = currentBalance + utxo.value;
+    });
+    return balance;
+  }
+
+  static selectInput(utxos, amount, color, exceptInputs = []) {
+    if (!utxos) {
+      throw new GcoinException('Not valid utxos!');
+    }
+
+    const inputs = [];
+    let count = 0;
+    utxos.sort((x, y) => x.value - y.value);
+    utxos.forEach((utxo) => {
+      if (utxo.color === color && count < amount && !(exceptInputs.includes(utxo))) {
+        inputs.push(utxo);
+        count += utxo.value;
+      }
+    });
+
+    if (count >= amount) {
+      return inputs;
+    }
+    return [];
+  }
+
   extendsRpcToGcoinPresenter() {
     const rpcSpec = [
       'getInfo',
       'mint',
+      'gettxoutaddress',
+      'sendrawtransaction',
     ];
 
     for (const method of rpcSpec) {
@@ -43,16 +84,70 @@ class GcoinPresenter {
     });
   }
 
+  createRawTx(keyPair, addressTo, amount, color, comment = '', type = 0) {
+    const self = this;
+    return co(function* _() {
+      const feeColor = 1;
+      const addressFrom = keyPair.getAddress();
+      const utxos = yield self.callRpc('gettxoutaddress', addressFrom);
+      const inputs = GcoinPresenter.selectInput(utxos, amount, color);
+      const txBuilder = new gcoinLib.TransactionBuilder(null, type);
+
+      if (inputs.length === 0) {
+        throw new GcoinException('Not Enough Balance!');
+      }
+      inputs.forEach((input) => {
+        txBuilder.addInput(input.txid, input.vout, 0xffffffff, input.scriptPubKey);
+      });
+
+      let feeInputs = [];
+      if (color !== feeColor || GcoinPresenter.countBalance(inputs)[1] - amount < 1) {
+        feeInputs = GcoinPresenter.selectInput(utxos, 1, 1, inputs);
+      }
+      feeInputs.forEach((input) => {
+        txBuilder.addInput(input.txid, input.vout, 0xffffffff, input.scriptPubKey);
+      });
+
+      txBuilder.addOutput(
+        addressTo,
+        decimal(amount).mul(100000000).toNumber(),
+        color
+      );
+      if (comment !== '') {
+        const dataScript = gcoinLib.script.nullDataOutput(new Buffer(comment));
+        txBuilder.addOutput(dataScript, 0, 0);
+      }
+
+      const inputBalance = GcoinPresenter.countBalance(inputs.concat(feeInputs));
+      Object.keys(inputBalance).forEach((key) => {
+        let changeAmount = inputBalance[key];
+        if (key === color.toString()) {
+          changeAmount -= amount;
+        }
+        if (key === feeColor.toString()) {
+          changeAmount -= 1;
+        }
+        txBuilder.addOutput(
+          addressFrom,
+          decimal(changeAmount).mul(100000000).toNumber(),
+          parseInt(key, 10)
+        );
+      });
+
+      txBuilder.inputs.forEach((input, idx) => {
+        txBuilder.sign(idx, keyPair);
+      });
+      return txBuilder.build().toHex();
+    }).catch((err) => {
+      console.log(err);
+    });
+  }
+
   getAddressBalance(address) {
     const self = this;
     return co(function* _() {
       const utxos = yield self.callRpc('gettxoutaddress', address);
-      const balance = {};
-      utxos.forEach((utxo) => {
-        const currentBalance = balance[utxo.color] || 0;
-        balance[utxo.color] = currentBalance + utxo.value;
-      });
-      return balance;
+      return GcoinPresenter.countBalance(utxos);
     });
   }
 
