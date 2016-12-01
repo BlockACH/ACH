@@ -1,3 +1,4 @@
 node_modules/
 .remote-sync.json
 *.log
+.DS_Store
