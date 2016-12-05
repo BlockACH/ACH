@@ -60,15 +60,18 @@ astarMongo.connect((astarError, astarDb) => {
     co(function* __() {
       const filter = { $or: [{ P_TDATE: currentDay }, { P_TDATE: previousDay, P_TYPE: 'N' }] };
       console.log(`filter:${JSON.stringify(filter, null, 4)}`);
-      const txs = yield astarDb.collection('06Txs').find(filter).toArray();
+      const txs = yield astarDb.collection('transactions').find(filter).toArray();
+      console.log(`txs length: ${txs.length}`);
       console.log('txxxxxxxxs!');
       const bankManager = Bank.getManager();
       if (txs.length) {
         for (const tx of txs) {
+          console.log(tx.P_PBANK);
           const bank = bankManager.getBankByID(tx.P_PBANK.substring(0, 3));
           const bank2 = bankManager.getBankByID(tx.P_RBANK.substring(0, 3));
-          console.log(`bank:${JSON.stringify(bank, null, 4)}`);
-          const rawTx = yield bank.sendTo(bank2, parseFloat(tx.P_AMT), 1, 'wow');
+          // console.log(`bank:${JSON.stringify(bank, null, 4)}`);
+          // console.log(`bank2:${JSON.stringify(bank2, null, 4)}`);
+          const rawTx = yield bank.sendTo(bank2, parseFloat(tx.P_AMT) / 100000000, 2, 'wow');
           console.log(rawTx);
         }
       }
